@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::TurnCancellation;
 use super::codex::{CodexChat, CodexChatConfig};
 use super::direct_chat::{
@@ -16,8 +18,9 @@ impl ChatEngine {
         project: &Project,
         config: ChatConfig,
         session_id: impl Into<String>,
+        state_dir: Option<PathBuf>,
     ) -> Result<Self, ChatError> {
-        DirectChat::new(project, config, session_id).map(Self::Native)
+        DirectChat::new(project, config, session_id, state_dir).map(Self::Native)
     }
 
     pub(crate) fn codex(project: &Project, config: CodexChatConfig) -> Result<Self, ChatError> {

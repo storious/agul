@@ -11,11 +11,11 @@ use serde::{Deserialize, Deserializer};
 use serde_json::{Map, Value, json};
 
 use crate::runtime::{
-    AGUL_PLUGIN_FORMAT, ChatConfig, ChatEngine, ChatError, ChatEvent, ChatSession, CodexChatConfig,
-    DEFAULT_MAX_ROUNDS, DEFAULT_MAX_TOKENS, DEFAULT_MAX_TOOL_CALLS, DEFAULT_TIMEOUT_SECONDS,
-    NativeConnectionPreset, NativeProvider, NativeSessionConfig, PriceCatalog, Project,
-    ProviderConfig, ProviderIdentity, RelatedSession, ResponseObservation, SessionAttribution,
-    SessionEngine, SessionStatus, SessionStore, TraceAppender, UsagePurpose,
+    AGUL_PLUGIN_FORMAT, AGUL_STATE_DIR_ENV, ChatConfig, ChatEngine, ChatError, ChatEvent,
+    ChatSession, CodexChatConfig, DEFAULT_MAX_ROUNDS, DEFAULT_MAX_TOKENS, DEFAULT_MAX_TOOL_CALLS,
+    DEFAULT_TIMEOUT_SECONDS, NativeConnectionPreset, NativeProvider, NativeSessionConfig,
+    PriceCatalog, Project, ProviderConfig, ProviderIdentity, RelatedSession, ResponseObservation,
+    SessionAttribution, SessionEngine, SessionStatus, SessionStore, TraceAppender, UsagePurpose,
 };
 
 const METHODS: [&str; 6] = [
@@ -36,30 +36,48 @@ pub(crate) struct AriArgs {
 #[derive(Subcommand, Debug)]
 pub(crate) enum AriCommand {
     /// Serve ARI JSON-RPC over standard input and output.
-    Serve,
+    Serve {
+        /// Override the local state directory for every served session.
+        #[arg(long)]
+        state_dir: Option<PathBuf>,
+    },
 }
 
 pub(crate) fn run(args: &AriArgs) -> io::Result<()> {
     match &args.command {
-        AriCommand::Serve => {
+        AriCommand::Serve { state_dir } => {
+            let state_dir = state_dir
+                .clone()
+                .or_else(|| {
+                    env::var_os(AGUL_STATE_DIR_ENV)
+                        .filter(|value| !value.is_empty())
+                        .map(PathBuf::from)
+                })
+                .map(std::path::absolute)
+                .transpose()?;
             let stdin = io::stdin();
             let stdout = io::stdout();
-            serve_connection(&mut stdin.lock(), &mut stdout.lock())
+            serve_connection(&mut stdin.lock(), &mut stdout.lock(), state_dir)
         }
     }
 }
 
-fn serve_connection(input: &mut impl BufRead, output: &mut impl Write) -> io::Result<()> {
-    let store = SessionStore::discover(None).map_err(io::Error::other)?;
-    serve_connection_with_store(input, output, store)
+fn serve_connection(
+    input: &mut impl BufRead,
+    output: &mut impl Write,
+    state_dir: Option<PathBuf>,
+) -> io::Result<()> {
+    let store = SessionStore::discover(state_dir.as_deref()).map_err(io::Error::other)?;
+    serve_connection_with_store(input, output, store, state_dir)
 }
 
 fn serve_connection_with_store(
     input: &mut impl BufRead,
     output: &mut impl Write,
     store: SessionStore,
+    state_dir: Option<PathBuf>,
 ) -> io::Result<()> {
-    let mut server = Server::new(store);
+    let mut server = Server::new(store, state_dir);
     let mut line = String::new();
     loop {
         line.clear();
@@ -115,14 +133,16 @@ fn parse_request(line: &str) -> Result<Request, RpcError> {
 struct Server {
     initialized: bool,
     store: SessionStore,
+    state_dir: Option<PathBuf>,
     sessions: HashMap<String, Session>,
 }
 
 impl Server {
-    fn new(store: SessionStore) -> Self {
+    fn new(store: SessionStore, state_dir: Option<PathBuf>) -> Self {
         Self {
             initialized: false,
             store,
+            state_dir,
             sessions: HashMap::new(),
         }
     }
@@ -286,7 +306,7 @@ impl Server {
                     api_key_env,
                     reasoning_effort,
                 }));
-                let chat = ChatEngine::native(&project, config, &state.id)
+                let chat = ChatEngine::native(&project, config, &state.id, self.state_dir.clone())
                     .map_err(|error| RpcError::runtime(error.to_string()))?;
                 let provider_name = identity.provider_name().to_string();
                 (identity, state, chat, provider_name)
@@ -1067,6 +1087,7 @@ mod tests {
             &mut Cursor::new(input),
             &mut output,
             SessionStore::discover(Some(state.path())).unwrap(),
+            None,
         )
         .unwrap();
 
@@ -1220,7 +1241,7 @@ mod tests {
         )
         .unwrap();
         let state = tempfile::tempdir().unwrap();
-        let mut server = Server::new(SessionStore::discover(Some(state.path())).unwrap());
+        let mut server = Server::new(SessionStore::discover(Some(state.path())).unwrap(), None);
         server.initialized = true;
         let mut output = Vec::new();
 
@@ -1273,7 +1294,7 @@ mod tests {
     fn glm_provider_resolves_coding_plan_and_keeps_ordinary_api_explicit() {
         let workspace = tempfile::tempdir().unwrap();
         let state = tempfile::tempdir().unwrap();
-        let mut server = Server::new(SessionStore::discover(Some(state.path())).unwrap());
+        let mut server = Server::new(SessionStore::discover(Some(state.path())).unwrap(), None);
         server.initialized = true;
 
         let started = server
@@ -1394,7 +1415,7 @@ mod tests {
             )
             .unwrap();
             let state = tempfile::tempdir().unwrap();
-            let mut server = Server::new(SessionStore::discover(Some(state.path())).unwrap());
+            let mut server = Server::new(SessionStore::discover(Some(state.path())).unwrap(), None);
             server.initialized = true;
             let mut output = Vec::new();
             let started = server

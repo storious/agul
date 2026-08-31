@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
 use std::time::Duration;
@@ -324,10 +324,15 @@ fn run_chat(args: &ChatArgs) -> Result<(), Box<dyn std::error::Error>> {
     if args.prompt.is_none() && !interactive {
         return Err("no interactive terminal; use --prompt".into());
     }
+    let state_dir = args
+        .state_dir
+        .as_deref()
+        .map(std::path::absolute)
+        .transpose()?;
     let store = if args.no_session {
         None
     } else {
-        Some(SessionStore::discover(args.state_dir.as_deref())?)
+        Some(SessionStore::discover(state_dir.as_deref())?)
     };
     let requested_session = match resolve_session_request(args, store.as_ref())? {
         SessionRequest::New => None,
@@ -461,6 +466,7 @@ fn run_chat(args: &ChatArgs) -> Result<(), Box<dyn std::error::Error>> {
                 max_tool_calls: args.max_tool_calls,
             },
             &session.id,
+            state_dir.clone(),
         )?,
         SessionEngine::Codex => {
             session.replace_price_catalog(None);
@@ -655,6 +661,7 @@ fn run_chat(args: &ChatArgs) -> Result<(), Box<dyn std::error::Error>> {
                                 &project,
                                 &mut session,
                                 store.as_ref(),
+                                state_dir.as_deref(),
                                 presenter,
                                 cancellation,
                             )
@@ -1597,6 +1604,7 @@ fn handle_plugin_command(
     project: &Project,
     session: &mut ChatSession,
     store: Option<&SessionStore>,
+    state_dir: Option<&Path>,
     presenter: &mut Presenter,
     cancellation: &TurnCancellation,
 ) -> Result<(), LiveCommandError> {
@@ -1639,6 +1647,7 @@ fn handle_plugin_command(
         session_id: &session_id,
         workspace: &project.workspace,
         launch_path: project.launch.as_ref().map(|launch| launch.path.as_path()),
+        state_dir,
     };
     let terminal = command.execute_cancellable(arguments, &context, cancellation, &mut |event| {
         if cancellation.is_cancelled() {
@@ -3058,6 +3067,7 @@ mod tests {
                 max_tool_calls: 1,
             },
             session.id.clone(),
+            None,
         )
         .unwrap();
         let identity = ProviderIdentity::from_endpoint(chat.endpoint());
@@ -3271,6 +3281,7 @@ mod tests {
                 &project,
                 &mut session,
                 Some(&store),
+                Some(&state),
                 presenter,
                 cancellation,
             )
@@ -3285,6 +3296,15 @@ mod tests {
         } = live;
 
         assert!(process_started, "coordinator child process did not start");
+        assert_eq!(
+            fs::read_to_string(
+                project
+                    .workspace
+                    .join(".agents/plugins/coordinator/state-dir.txt")
+            )
+            .unwrap(),
+            state.to_string_lossy()
+        );
         assert!(matches!(result, Ok(Err(LiveCommandError::Stopped))));
         assert!(queued_input.is_empty());
         assert!(!exit_requested);

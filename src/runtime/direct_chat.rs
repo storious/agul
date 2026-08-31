@@ -87,6 +87,7 @@ pub(crate) struct DirectChat {
     session_id: String,
     workspace: PathBuf,
     launch_path: Option<PathBuf>,
+    state_dir: Option<PathBuf>,
     system_prompt: String,
     messages: Vec<Message>,
     tools: tools::ToolSet,
@@ -99,6 +100,7 @@ impl DirectChat {
         project: &Project,
         config: ChatConfig,
         session_id: impl Into<String>,
+        state_dir: Option<PathBuf>,
     ) -> Result<Self, ChatError> {
         let max_rounds = config.max_rounds.max(1);
         let max_tool_calls = config.max_tool_calls.max(1);
@@ -113,6 +115,7 @@ impl DirectChat {
             session_id: session_id.into(),
             workspace: project.workspace.clone(),
             launch_path: project.launch.as_ref().map(|launch| launch.path.clone()),
+            state_dir,
             system_prompt,
             messages,
             tools,
@@ -254,6 +257,7 @@ impl DirectChat {
                     session_id: &self.session_id,
                     workspace: &self.workspace,
                     launch_path: self.launch_path.as_deref(),
+                    state_dir: self.state_dir.as_deref(),
                 };
                 if cancellation.is_cancelled() {
                     return Err(ChatError::new("turn cancelled").with_progress(round, tool_calls));

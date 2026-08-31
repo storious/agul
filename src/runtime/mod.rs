@@ -23,6 +23,8 @@ pub(crate) const GLM_CODING_DEFAULT_BASE_URL: &str = "https://open.bigmodel.cn/a
 pub(crate) const GLM_CODING_DEFAULT_MODEL: &str = "glm-4.7";
 pub(crate) const AGUL_LAUNCH_FORMAT: &str = "agul/launch/v2";
 pub(crate) const AGUL_PLUGIN_FORMAT: &str = "agul/plugin/v2";
+/// Carries an explicit state root through plugin-managed Agul process trees.
+pub(crate) const AGUL_STATE_DIR_ENV: &str = "AGUL_STATE_DIR";
 pub(crate) const DEFAULT_MAX_ROUNDS: u32 = 32;
 pub(crate) const DEFAULT_MAX_TOOL_CALLS: u32 = 128;
 pub(crate) const DEFAULT_MAX_TOKENS: u32 = 16_384;

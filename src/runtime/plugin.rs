@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::AGUL_PLUGIN_FORMAT;
+use super::AGUL_STATE_DIR_ENV;
 use super::TurnCancellation;
 use super::process::{
     ProcessLimits, ProcessTree, run_process_streaming, run_process_streaming_cancellable,
@@ -65,6 +66,7 @@ pub(crate) struct PluginCallContext<'a> {
     pub(crate) session_id: &'a str,
     pub(crate) workspace: &'a Path,
     pub(crate) launch_path: Option<&'a Path>,
+    pub(crate) state_dir: Option<&'a Path>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -273,6 +275,14 @@ impl PluginProcess {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        match context.state_dir {
+            Some(state_dir) => {
+                command.env(AGUL_STATE_DIR_ENV, state_dir);
+            }
+            None => {
+                command.env_remove(AGUL_STATE_DIR_ENV);
+            }
+        }
         let mut tree = ProcessTree::prepare(&mut command).map_err(|error| {
             PluginExecutionError::Plugin(format!(
                 "could not prepare plugin {}: {error}",
@@ -381,6 +391,12 @@ fn validate_context(context: &PluginCallContext<'_>) -> Result<(), String> {
         .is_some_and(|launch_path| !launch_path.is_absolute())
     {
         return Err("launch_path must be absolute when present".to_string());
+    }
+    if context
+        .state_dir
+        .is_some_and(|state_dir| !state_dir.is_absolute())
+    {
+        return Err("state_dir must be absolute when present".to_string());
     }
     Ok(())
 }
@@ -963,7 +979,7 @@ pub(crate) fn process_tree_command_fixture() -> (Vec<String>, &'static str, &'st
                 "plugin.ps1".to_string(),
             ],
             "plugin.ps1",
-            "$null = [Console]::In.ReadToEnd()\n[IO.File]::WriteAllText('child.ps1', \"Start-Sleep -Seconds 30\")\n$child = Start-Process powershell.exe -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'child.ps1') -NoNewWindow -PassThru\n[IO.File]::WriteAllText('child-started', [string]$child.Id)\nexit 0\n",
+            "$null = [Console]::In.ReadToEnd()\n[IO.File]::WriteAllText('state-dir.txt', [string]$env:AGUL_STATE_DIR)\n[IO.File]::WriteAllText('child.ps1', \"Start-Sleep -Seconds 30\")\n$child = Start-Process powershell.exe -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'child.ps1') -NoNewWindow -PassThru\n[IO.File]::WriteAllText('child-started', [string]$child.Id)\nexit 0\n",
         )
     }
     #[cfg(unix)]
@@ -971,7 +987,7 @@ pub(crate) fn process_tree_command_fixture() -> (Vec<String>, &'static str, &'st
         (
             vec!["/bin/sh".to_string(), "plugin.sh".to_string()],
             "plugin.sh",
-            "#!/bin/sh\ncat >/dev/null\n/bin/sleep 30 &\nchild=$!\nprintf '%s' \"$child\" > child-started\nexit 0\n",
+            "#!/bin/sh\ncat >/dev/null\nprintf '%s' \"${AGUL_STATE_DIR-}\" > state-dir.txt\n/bin/sleep 30 &\nchild=$!\nprintf '%s' \"$child\" > child-started\nexit 0\n",
         )
     }
 }
@@ -1088,6 +1104,7 @@ mod tests {
             session_id: "session-1",
             workspace,
             launch_path: None,
+            state_dir: None,
         }
     }
 

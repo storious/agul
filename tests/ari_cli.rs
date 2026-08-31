@@ -25,6 +25,7 @@ const CREATED_AT: u64 = 1_787_788_800;
 fn stdio_ari_initializes_lists_capabilities_starts_and_closes_a_launched_session() {
     let root = tempfile::tempdir().expect("test root");
     let home = root.path().join("home");
+    let state_dir = root.path().join("state");
     fs::create_dir_all(root.path().join(".agents/runtime")).expect("launch directory");
     fs::create_dir_all(root.path().join(".agents/plugins/echo")).expect("plugin directory");
     fs::create_dir_all(&home).expect("isolated home");
@@ -69,6 +70,7 @@ fn stdio_ari_initializes_lists_capabilities_starts_and_closes_a_launched_session
         .env("LOCALAPPDATA", &home)
         .env("APPDATA", &home)
         .env("XDG_STATE_HOME", &home)
+        .env("AGUL_STATE_DIR", &state_dir)
         .spawn()
         .expect("spawn agul ari serve");
     let mut stdin = child.stdin.take().expect("child stdin");
@@ -200,6 +202,43 @@ fn stdio_ari_initializes_lists_capabilities_starts_and_closes_a_launched_session
         .read_to_string(&mut stderr_text)
         .expect("read child stderr");
     assert!(stderr_text.is_empty(), "unexpected stderr: {stderr_text}");
+    assert!(
+        state_dir
+            .join("sessions")
+            .join(format!("{session_id}.json"))
+            .is_file(),
+        "ARI child session must use the explicit state directory"
+    );
+    assert!(
+        !home
+            .join("Agul/sessions")
+            .join(format!("{session_id}.json"))
+            .exists(),
+        "ARI child session must not fall back to the default state directory"
+    );
+}
+
+#[test]
+fn stdio_ari_accepts_an_explicit_state_directory_argument() {
+    let root = tempfile::tempdir().expect("test root");
+    let state_dir = root.path().join("state");
+
+    let output = Command::new(agul_bin())
+        .args(["ari", "serve", "--state-dir"])
+        .arg(&state_dir)
+        .stdin(Stdio::null())
+        .output()
+        .expect("run agul ari serve with an explicit state directory");
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(state_dir.join("sessions").is_dir());
+    assert!(state_dir.join("traces").is_dir());
 }
 
 #[test]

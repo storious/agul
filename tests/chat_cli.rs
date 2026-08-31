@@ -1418,6 +1418,7 @@ fn direct_chat_discovers_and_runs_a_launch_plugin() {
     let root = tempfile::tempdir().expect("test root");
     let workspace = root.path().join("workspace");
     let home = root.path().join("home");
+    let state_dir = root.path().join("state");
     let runtime = workspace.join(".agents/runtime");
     let plugin = workspace.join(".agents/plugins/echo");
     fs::create_dir_all(&runtime).expect("runtime");
@@ -1472,6 +1473,8 @@ fn direct_chat_discovers_and_runs_a_launch_plugin() {
         .arg("chat")
         .arg("--workspace")
         .arg(&workspace)
+        .arg("--state-dir")
+        .arg(&state_dir)
         .arg("--base-url")
         .arg(server.endpoint())
         .args(["--model", MODEL])
@@ -1519,6 +1522,13 @@ fn direct_chat_discovers_and_runs_a_launch_plugin() {
     assert_eq!(
         invocation["context"]["launch_path"],
         json!(canonical_workspace.join(".agents/runtime/launch.json"))
+    );
+    let context = invocation["context"].as_object().expect("plugin context");
+    assert_eq!(context.len(), 4, "Plugin v2 context must remain stable");
+    assert!(!context.contains_key("state_dir"));
+    assert_eq!(
+        fs::read_to_string(plugin.join("state-dir.txt")).expect("plugin state directory"),
+        state_dir.to_string_lossy()
     );
 }
 
@@ -1626,7 +1636,7 @@ fn plugin_command_and_scripts() -> (Vec<String>, &'static str, &'static str, &'s
                 "plugin.ps1".to_string(),
             ],
             "plugin.ps1",
-            "$payload = [Console]::In.ReadToEnd()\n[IO.File]::WriteAllText((Join-Path (Get-Location) 'invocation.json'), $payload)\n[Console]::Out.WriteLine('{\"type\":\"result\",\"call_id\":\"call-plugin\",\"seq\":1,\"ok\":true,\"content\":\"plugin-ok\"}')\n",
+            "$payload = [Console]::In.ReadToEnd()\n[IO.File]::WriteAllText((Join-Path (Get-Location) 'invocation.json'), $payload)\n[IO.File]::WriteAllText((Join-Path (Get-Location) 'state-dir.txt'), [string]$env:AGUL_STATE_DIR)\n[Console]::Out.WriteLine('{\"type\":\"result\",\"call_id\":\"call-plugin\",\"seq\":1,\"ok\":true,\"content\":\"plugin-ok\"}')\n",
             "$null = [Console]::In.ReadToEnd()\n[Console]::Error.Write('plugin-broke')\nexit 7\n",
         )
     }
@@ -1635,7 +1645,7 @@ fn plugin_command_and_scripts() -> (Vec<String>, &'static str, &'static str, &'s
         (
             vec!["/bin/sh".to_string(), "plugin.sh".to_string()],
             "plugin.sh",
-            "#!/bin/sh\npayload=$(cat)\nprintf '%s' \"$payload\" > invocation.json\nprintf '%s\\n' '{\"type\":\"result\",\"call_id\":\"call-plugin\",\"seq\":1,\"ok\":true,\"content\":\"plugin-ok\"}'\n",
+            "#!/bin/sh\npayload=$(cat)\nprintf '%s' \"$payload\" > invocation.json\nprintf '%s' \"${AGUL_STATE_DIR-}\" > state-dir.txt\nprintf '%s\\n' '{\"type\":\"result\",\"call_id\":\"call-plugin\",\"seq\":1,\"ok\":true,\"content\":\"plugin-ok\"}'\n",
             "#!/bin/sh\ncat >/dev/null\nprintf '%s' 'plugin-broke' >&2\nexit 7\n",
         )
     }
