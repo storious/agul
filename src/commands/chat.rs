@@ -144,52 +144,53 @@ impl StreamTraceBuffer {
 #[derive(Args, Clone, Debug)]
 pub(crate) struct ChatArgs {
     /// Send one message and exit. Without this option Agul opens the workbench.
-    #[arg(long)]
+    #[arg(long, help_heading = "Input")]
     pub(crate) prompt: Option<String>,
 
     /// Directory the agent works in. Defaults to the current directory.
-    #[arg(long, default_value = ".")]
+    #[arg(long, default_value = ".", help_heading = "Workspace")]
     pub(crate) workspace: PathBuf,
 
-    /// Use a specific thin Agulater launch file instead of discovery.
-    #[arg(long)]
+    /// Use this Agulater launch file instead of discovering .agents/runtime/launch.json.
+    #[arg(long, help_heading = "Workspace")]
     pub(crate) launch: Option<PathBuf>,
 
     /// Execution engine. Native keeps Agul's four-tool loop; Codex uses ChatGPT quota.
-    #[arg(long, value_enum)]
+    #[arg(long, value_enum, help_heading = "Model")]
     engine: Option<EngineArg>,
 
     /// Codex executable used by the account engine.
-    #[arg(long, env = "AGUL_CODEX_COMMAND")]
+    #[arg(long, env = "AGUL_CODEX_COMMAND", help_heading = "Model")]
     codex_command: Option<String>,
 
-    /// Native engine: connection preset (`deepseek` or GLM Coding Plan `glm`).
-    #[arg(long, env = "AGUL_PROVIDER")]
+    /// Native connection: `deepseek` (API billing) or `glm` (GLM Coding Plan).
+    #[arg(long, env = "AGUL_PROVIDER", help_heading = "Model")]
     provider: Option<NativeConnectionPreset>,
 
     /// Native engine: OpenAI-compatible base URL or full chat/completions URL.
-    #[arg(long, env = "AGUL_BASE_URL")]
+    #[arg(long, env = "AGUL_BASE_URL", help_heading = "Model")]
     pub(crate) base_url: Option<String>,
 
     /// Model name sent to the selected engine. Native and Codex have separate env defaults.
-    #[arg(long)]
+    #[arg(long, help_heading = "Model")]
     pub(crate) model: Option<String>,
 
     /// Native engine: API-key environment variable; the provider preset supplies its default.
-    #[arg(long)]
+    #[arg(long, help_heading = "Model")]
     pub(crate) api_key_env: Option<String>,
 
     /// Provider reasoning effort, when supported.
-    #[arg(long)]
+    #[arg(long, help_heading = "Model")]
     pub(crate) reasoning_effort: Option<String>,
 
     /// Native engine: versioned JSON price card. Official provider cards are built in.
-    #[arg(long)]
+    #[arg(long, help_heading = "Model")]
     pub(crate) price_card: Option<PathBuf>,
 
-    /// Resume a visible-history session.
+    /// Continue a saved chat by session ID.
     #[arg(
         long,
+        help_heading = "Sessions",
         conflicts_with_all = ["no_session", "continue_session", "resume"]
     )]
     pub(crate) session: Option<String>,
@@ -197,6 +198,7 @@ pub(crate) struct ChatArgs {
     /// Continue the most recent chat in the selected workspace.
     #[arg(
         long = "continue",
+        help_heading = "Sessions",
         conflicts_with_all = ["no_session", "session", "resume"]
     )]
     pub(crate) continue_session: bool,
@@ -204,52 +206,63 @@ pub(crate) struct ChatArgs {
     /// Choose a previous chat from the selected workspace.
     #[arg(
         long,
+        help_heading = "Sessions",
         conflicts_with_all = ["no_session", "session", "continue_session", "prompt", "json"]
     )]
     pub(crate) resume: bool,
 
     /// Do not persist visible turns or the usage ledger.
-    #[arg(long)]
+    #[arg(long, help_heading = "Sessions")]
     pub(crate) no_session: bool,
 
-    /// Override the local state directory.
-    #[arg(long)]
+    /// Override the directory containing saved sessions and usage ledgers.
+    #[arg(long, help_heading = "Sessions")]
     pub(crate) state_dir: Option<PathBuf>,
 
     /// Native engine: maximum model responses in one turn.
-    #[arg(long, default_value_t = DEFAULT_MAX_ROUNDS)]
+    #[arg(long, default_value_t = DEFAULT_MAX_ROUNDS, help_heading = "Limits")]
     pub(crate) max_rounds: u32,
 
     /// Native engine: maximum tool calls in one turn.
-    #[arg(long, default_value_t = DEFAULT_MAX_TOOL_CALLS)]
+    #[arg(
+        long,
+        default_value_t = DEFAULT_MAX_TOOL_CALLS,
+        help_heading = "Limits"
+    )]
     pub(crate) max_tool_calls: u32,
 
     /// Native engine: maximum output tokens requested from the provider.
-    #[arg(long, env = "AGUL_MAX_TOKENS", default_value_t = DEFAULT_MAX_TOKENS)]
+    #[arg(
+        long,
+        env = "AGUL_MAX_TOKENS",
+        default_value_t = DEFAULT_MAX_TOKENS,
+        help_heading = "Limits"
+    )]
     pub(crate) max_tokens: u32,
 
     /// Native engine: known context window used to fit the initial response budget.
-    #[arg(long, env = "AGUL_CONTEXT_WINDOW")]
+    #[arg(long, env = "AGUL_CONTEXT_WINDOW", help_heading = "Limits")]
     pub(crate) context_window: Option<u32>,
 
     /// Native provider-request timeout or total Codex turn timeout, in seconds.
     #[arg(
         long,
         env = "AGUL_TIMEOUT_SECONDS",
-        default_value_t = DEFAULT_TIMEOUT_SECONDS
+        default_value_t = DEFAULT_TIMEOUT_SECONDS,
+        help_heading = "Limits"
     )]
     pub(crate) timeout_seconds: u64,
 
     /// Keep provider reasoning out of interactive output.
-    #[arg(long)]
+    #[arg(long, help_heading = "Output")]
     pub(crate) hide_reasoning: bool,
 
     /// Disable terminal colors.
-    #[arg(long)]
+    #[arg(long, help_heading = "Output")]
     pub(crate) no_color: bool,
 
     /// Emit one JSON result. Requires --prompt.
-    #[arg(long, requires = "prompt")]
+    #[arg(long, requires = "prompt", help_heading = "Output")]
     pub(crate) json: bool,
 }
 

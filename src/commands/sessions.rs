@@ -7,6 +7,7 @@ use crate::runtime::{SESSION_SCHEMA, SessionStore, format_femto_amount_3dp};
 
 #[derive(Args, Debug)]
 pub(crate) struct SessionsArgs {
+    /// Override the directory containing saved sessions and usage ledgers.
     #[arg(long)]
     state_dir: Option<PathBuf>,
 
@@ -20,6 +21,7 @@ enum SessionsCommand {
     List,
     /// Show one session and its per-response usage ledger.
     Show {
+        /// Session ID shown by `agul sessions list`.
         id: String,
         /// Include the append-only event trace.
         #[arg(long)]
