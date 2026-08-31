@@ -1,0 +1,14 @@
+{
+  "format": "agul/plugin/v2",
+  "name": "invalid",
+  "version": "1.0.0",
+  "command": ["invalid-plugin"],
+  "tools": [
+    {
+      "name": "invalid_tool",
+      "description": "This fixture must be rejected",
+      "parameters": {"type": "object"}
+    }
+  ],
+  "implicit_fallback": true
+}

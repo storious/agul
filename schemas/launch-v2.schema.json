@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agul.dev/schemas/launch-v2.schema.json",
+  "title": "Agul launch v2",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "agul/launch/v2"
+    },
+    "instructions": {
+      "type": "string",
+      "minLength": 1
+    },
+    "skills": {
+      "type": "string",
+      "minLength": 1
+    },
+    "plugins": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "format",
+    "instructions"
+  ],
+  "additionalProperties": false
+}

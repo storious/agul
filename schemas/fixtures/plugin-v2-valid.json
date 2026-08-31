@@ -1,0 +1,28 @@
+{
+  "format": "agul/plugin/v2",
+  "name": "coordinator",
+  "version": "0.1.0",
+  "command": ["python", "coordinator.py"],
+  "timeout_seconds": 600,
+  "capabilities": ["agul/dependency-installer/v1"],
+  "commands": [
+    {
+      "name": "agent",
+      "description": "Delegate to a prepared specialist"
+    }
+  ],
+  "tools": [
+    {
+      "name": "delegate_tasks",
+      "description": "Run bounded tasks with prepared specialists",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tasks": {"type": "array"}
+        },
+        "required": ["tasks"],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

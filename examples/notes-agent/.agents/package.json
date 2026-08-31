@@ -1,0 +1,7 @@
+{
+  "format": "agulater/package/v2",
+  "id": "notes-agent",
+  "version": "0.1.0",
+  "description": "A concise notes maintenance assistant.",
+  "instructions": "AGENTS.md"
+}

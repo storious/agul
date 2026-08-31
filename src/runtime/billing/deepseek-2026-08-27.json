@@ -1,0 +1,93 @@
+{
+  "schema": "agul/price-catalog/v0.3",
+  "id": "deepseek-official-usd",
+  "version": "2026-08-27.1",
+  "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+  "source_checked_at": 1787788800,
+  "review_after": 1788393600,
+  "currency": "USD",
+  "cards": [
+    {
+      "id": "deepseek-v4-flash-standard",
+      "provider": "deepseek",
+      "origin": "https://api.deepseek.com",
+      "models": ["deepseek-v4-flash"],
+      "effective_from": 1787788800,
+      "effective_until": null,
+      "default_band": "off-peak",
+      "bands": [
+        {
+          "id": "off-peak",
+          "rates": {
+            "cache_hit_input_nanos_per_million": 7000000,
+            "cache_miss_input_nanos_per_million": 220000000,
+            "output_nanos_per_million": 660000000
+          }
+        },
+        {
+          "id": "peak",
+          "rates": {
+            "cache_hit_input_nanos_per_million": 14000000,
+            "cache_miss_input_nanos_per_million": 440000000,
+            "output_nanos_per_million": 1320000000
+          }
+        }
+      ],
+      "schedule": [
+        {
+          "band": "peak",
+          "weekdays_utc": ["mon", "tue", "wed", "thu", "fri"],
+          "start_minute_utc": 60,
+          "end_minute_utc": 240
+        },
+        {
+          "band": "peak",
+          "weekdays_utc": ["mon", "tue", "wed", "thu", "fri"],
+          "start_minute_utc": 360,
+          "end_minute_utc": 600
+        }
+      ]
+    },
+    {
+      "id": "deepseek-v4-pro-standard",
+      "provider": "deepseek",
+      "origin": "https://api.deepseek.com",
+      "models": ["deepseek-v4-pro"],
+      "effective_from": 1787788800,
+      "effective_until": null,
+      "default_band": "off-peak",
+      "bands": [
+        {
+          "id": "off-peak",
+          "rates": {
+            "cache_hit_input_nanos_per_million": 22000000,
+            "cache_miss_input_nanos_per_million": 660000000,
+            "output_nanos_per_million": 1980000000
+          }
+        },
+        {
+          "id": "peak",
+          "rates": {
+            "cache_hit_input_nanos_per_million": 44000000,
+            "cache_miss_input_nanos_per_million": 1320000000,
+            "output_nanos_per_million": 3960000000
+          }
+        }
+      ],
+      "schedule": [
+        {
+          "band": "peak",
+          "weekdays_utc": ["mon", "tue", "wed", "thu", "fri"],
+          "start_minute_utc": 60,
+          "end_minute_utc": 240
+        },
+        {
+          "band": "peak",
+          "weekdays_utc": ["mon", "tue", "wed", "thu", "fri"],
+          "start_minute_utc": 360,
+          "end_minute_utc": 600
+        }
+      ]
+    }
+  ]
+}

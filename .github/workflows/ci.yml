@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        run: >-
+          rustup toolchain install 1.98.0
+          --profile minimal
+          --component rustfmt
+          --component clippy
+          --no-self-update
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Benchmark tests
+        run: |
+          cargo build --release --locked
+          AGUL_BENCHMARK_BINARY="$PWD/target/release/agul" \
+            python benchmarks/test_runtime_benchmark.py
+
+      - name: Demo fixture semantics
+        run: >-
+          AGUL_DEMO_TEST_BINARY="$PWD/target/release/agul"
+          python scripts/test_render_demo.py
+
+      - name: Release archive contents
+        run: python scripts/test_package_release.py
+
+      - name: Release session persistence
+        run: >-
+          cargo test --release --locked --test chat_cli
+          failed_json_turn_reports_persisted_session_and_resume_progress -- --exact
+
+      - name: Benchmark regression gate
+        run: |
+          python benchmarks/runtime_benchmark.py \
+            --binary target/release/agul \
+            --samples 5 \
+            --sample-timeout-seconds 5 \
+            --output target/benchmark.json \
+            --first-event-budget-ms 1000 \
+            --total-response-budget-ms 1000 \
+            --peak-memory-budget-mib 128 \
+              --kv-hit-budget-percent 99
+
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-report
+          path: target/benchmark.json
+          if-no-files-found: warn
+
+      - name: Check installer
+        run: |
+          sh -n scripts/install.sh
+          version="$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')"
+          rendered="$(mktemp)"
+          trap 'rm -f "$rendered"' EXIT
+          sed "s/{{VERSION}}/${version}/g" scripts/install.sh > "$rendered"
+          sh "$rendered" --dry-run
+          fake_bin="$(mktemp -d)"
+          trap 'rm -f "$rendered"; rm -rf "$fake_bin"' EXIT
+          printf '#!/bin/sh\n[ "$1 $2" = "auth status" ]\n' > "$fake_bin/gh"
+          chmod +x "$fake_bin/gh"
+          output="$(PATH="$fake_bin:$PATH" sh "$rendered" --dry-run)"
+          printf '%s\n' "$output" | grep -F "gh release download"

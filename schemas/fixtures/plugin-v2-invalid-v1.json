@@ -1,0 +1,13 @@
+{
+  "format": "agul/plugin/v1",
+  "name": "legacy",
+  "version": "1.0.0",
+  "command": ["legacy-plugin"],
+  "tools": [
+    {
+      "name": "legacy_tool",
+      "description": "This fixture must be rejected",
+      "parameters": {"type": "object"}
+    }
+  ]
+}

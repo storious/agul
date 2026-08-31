@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agul.dev/schemas/plugin-v2-invocation.schema.json",
+  "title": "Agul Plugin v2 invocation",
+  "oneOf": [
+    {"$ref": "#/$defs/toolInvocation"},
+    {"$ref": "#/$defs/commandInvocation"}
+  ],
+  "$defs": {
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["call_id", "session_id", "workspace", "launch_path"],
+      "properties": {
+        "call_id": {"type": "string", "minLength": 1},
+        "session_id": {"type": "string", "minLength": 1},
+        "workspace": {"type": "string", "minLength": 1},
+        "launch_path": {"type": ["string", "null"]}
+      }
+    },
+    "toolInvocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "arguments", "context"],
+      "properties": {
+        "tool": {"type": "string", "minLength": 1},
+        "arguments": {},
+        "context": {"$ref": "#/$defs/context"}
+      }
+    },
+    "commandInvocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "arguments", "context"],
+      "properties": {
+        "command": {"type": "string", "minLength": 1},
+        "arguments": {"type": "string"},
+        "context": {"$ref": "#/$defs/context"}
+      }
+    }
+  }
+}

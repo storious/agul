@@ -1,0 +1,69 @@
+name: Render demo
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - ".github/workflows/render-demo.yml"
+      - "docs/demo/**"
+      - "scripts/render_demo.py"
+      - "scripts/test_render_demo.py"
+      - "src/commands/chat/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        run: >-
+          rustup toolchain install 1.98.0
+          --profile minimal
+          --no-self-update
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13.7"
+
+      - name: Install VHS
+        shell: bash
+        run: |
+          package="${RUNNER_TEMP}/vhs_0.11.0_amd64.deb"
+          curl --fail --location --silent --show-error \
+            --output "${package}" \
+            https://github.com/charmbracelet/vhs/releases/download/v0.11.0/vhs_0.11.0_amd64.deb
+          echo "fbc970f9e20ba59884af09b4d52c66117239a16cfe9a2a757f8af5b30b16d055  ${package}" \
+            | sha256sum --check --strict
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg ttyd "${package}"
+          rustc --version | grep --fixed-strings "rustc 1.98.0 "
+          test "$(python --version)" = "Python 3.13.7"
+          vhs --version | grep --fixed-strings "0.11.0"
+
+      - name: Render and verify
+        shell: bash
+        run: |
+          python scripts/render_demo.py
+          AGUL_DEMO_TEST_BINARY="$PWD/target/release/agul" \
+            python scripts/test_render_demo.py
+          test -s docs/assets/agul-demo.gif
+          file docs/assets/agul-demo.gif | grep --fixed-strings "GIF image data"
+          git diff --exit-code -- . \
+            ':(exclude)docs/assets/agul-demo.gif'
+
+      - name: Upload demo
+        uses: actions/upload-artifact@v7
+        with:
+          name: agul-demo
+          path: docs/assets/agul-demo.gif
+          if-no-files-found: error
+          retention-days: 14

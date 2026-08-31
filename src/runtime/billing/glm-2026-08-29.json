@@ -1,0 +1,31 @@
+{
+  "schema": "agul/price-catalog/v0.3",
+  "id": "glm-official-cny",
+  "version": "2026-08-29",
+  "source": "https://bigmodel.cn/pricing",
+  "source_checked_at": 1787961600,
+  "review_after": 1788566400,
+  "currency": "CNY",
+  "cards": [
+    {
+      "id": "glm-5-standard",
+      "provider": "glm",
+      "origin": "https://open.bigmodel.cn",
+      "models": ["glm-5.3", "glm-5.2"],
+      "effective_from": 1787961600,
+      "effective_until": null,
+      "default_band": "standard",
+      "bands": [
+        {
+          "id": "standard",
+          "rates": {
+            "cache_hit_input_nanos_per_million": 2000000000,
+            "cache_miss_input_nanos_per_million": 8000000000,
+            "output_nanos_per_million": 28000000000
+          }
+        }
+      ],
+      "schedule": []
+    }
+  ]
+}

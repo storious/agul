@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Require a main release commit
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD refs/remotes/origin/main
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          test "${GITHUB_REF_NAME}" = "v${version}"
+
+  build:
+    needs: source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            binary: target/x86_64-unknown-linux-gnu/release/agul
+            format: tar.gz
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            binary: target/x86_64-pc-windows-msvc/release/agul.exe
+            format: zip
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            binary: target/x86_64-apple-darwin/release/agul
+            format: tar.gz
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            binary: target/aarch64-apple-darwin/release/agul
+            format: tar.gz
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install Rust
+        run: >-
+          rustup toolchain install 1.98.0
+          --profile minimal
+          --target ${{ matrix.target }}
+          --no-self-update
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package
+        run: >-
+          python scripts/package_release.py
+          --binary "${{ matrix.binary }}"
+          --target "${{ matrix.target }}"
+          --version "${{ github.ref_name }}"
+          --format "${{ matrix.format }}"
+          --output dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      - name: Add installers
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          sed "s/{{VERSION}}/${version}/g" scripts/install.sh > dist/install.sh
+          sed "s/{{VERSION}}/${version}/g" scripts/install.ps1 > dist/install.ps1
+          cp docs/assets/agul-demo.gif dist/agul-demo.gif
+          sed "s/{{TAG}}/${GITHUB_REF_NAME}/g" docs/release.md > release-notes.md
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-bundle
+          path: dist/*
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          case "${GITHUB_REF_NAME}" in *-*) flags+=(--prerelease) ;; esac
+          gh release create "${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md \
+            --title "Agul ${GITHUB_REF_NAME#v}" \
+            "${flags[@]}" \
+            dist/*

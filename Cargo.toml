@@ -1,0 +1,53 @@
+[package]
+name = "agul"
+version = "0.6.0-rc.1"
+edition = "2024"
+rust-version = "1.98"
+description = "Small terminal agent runtime with four core tools, plugins, and ARI"
+license = "Apache-2.0"
+repository = "https://github.com/storious/agul"
+publish = false
+
+[dependencies]
+atomic-write-file = "0.3.1"
+clap = { version = "4.5", features = ["derive", "env"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+unicode-segmentation = "=1.13.3"
+unicode-width = "=0.2.2"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+tokio = { version = "1.53", features = ["macros", "rt", "time"] }
+ctrlc = "=3.5.2"
+crossterm = { version = "=0.29.0", default-features = false, features = [
+    "bracketed-paste",
+    "events",
+    "windows",
+] }
+ratatui = { version = "=0.30.2", default-features = false, features = [
+    "crossterm_0_29",
+    "layout-cache",
+    "scrolling-regions",
+] }
+ratatui-textarea = { version = "=0.9.2", default-features = false, features = ["crossterm"] }
+pulldown-cmark = { version = "=0.13.4", default-features = false }
+syntect = { version = "=5.3.0", default-features = false, features = [
+    "default-syntaxes",
+    "default-themes",
+    "regex-fancy",
+] }
+textwrap = { version = "=0.16.2", default-features = false, features = [
+    "unicode-linebreak",
+    "unicode-width",
+] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+httpmock = { version = "0.8.3", default-features = false }
+tempfile = "3.10"

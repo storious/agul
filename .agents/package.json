@@ -1,0 +1,7 @@
+{
+  "format": "agulater/package/v2",
+  "id": "agul",
+  "version": "0.6.0-rc.1",
+  "description": "Development assistant for the Agul runtime.",
+  "instructions": "AGENTS.md"
+}
